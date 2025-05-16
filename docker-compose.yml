@@ -1,0 +1,56 @@
+version: '3'
+services:
+  # Постгрес база в отдельном контейнере
+  postgres:
+    # Устанавливаем готовый образ
+    image: postgres 
+    # Задаем глобальные переменные для доступа к PG
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=airflow
+    restart: always
+    ports:
+      - 5434:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    restart: always
+    ports:
+      - 8081:8081    
+    networks:
+      - adminer-network
+
+  # Airflow в отдельном контейнере
+  airflow:
+    # Сборка из Dockerfile
+    build: .
+    restart: always
+    # Определяет порядок запуска сервисов
+    # Будем ждать postgres
+    depends_on:
+      - postgres
+    # Пробрасываем порты
+    ports:
+      - 8001:8080
+    # Пробрасываем папку с дагами
+    volumes:
+      - ./airflow/dags:/usr/local/airflow/dags
+      - ./airflow/plugins:/root/airflow/plugins
+      - logs:/usr/local/airflow/logs
+      
+networks:
+  adminer-network:
+# Задав таким образом вольюмы
+# нам не нужно заботиться о том где будет папка
+# В котором они будут лежать
+# Для баз данных и логов такой способ более верный
+volumes:
+  pgdata:
+  logs:
